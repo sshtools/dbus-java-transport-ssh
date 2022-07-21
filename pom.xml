@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <packaging>jar</packaging>
+
+    <artifactId>dbus-java-transport-ssh</artifactId>
+
+    <name>${project.artifactId}</name>
+    <groupId>com.sshtools</groupId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <description>
+        dbus-java transport providing SSH support.
+    </description>
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.github.hypfvieh</groupId>
+            <artifactId>dbus-java-core</artifactId>
+            <version>4.1.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sshtools.hotfixes</groupId>
+            <artifactId>maverick-synergy-client</artifactId>
+            <version>3.1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sshtools.hotfixes</groupId>
+            <artifactId>maverick-synergy-jdk16-client</artifactId>
+            <version>3.1.0-SNAPSHOT</version>
+        </dependency>
+
+    </dependencies>
+    
+</project>
