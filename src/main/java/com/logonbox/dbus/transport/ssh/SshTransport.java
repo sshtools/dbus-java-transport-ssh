@@ -1,5 +1,32 @@
 package com.logonbox.dbus.transport.ssh;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketOption;
+import java.net.UnixDomainSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
+import org.freedesktop.dbus.connections.BusAddress;
+import org.freedesktop.dbus.connections.SASL;
+import org.freedesktop.dbus.connections.config.TransportConfig;
+import org.freedesktop.dbus.connections.config.TransportConfigBuilder;
+import org.freedesktop.dbus.connections.transports.AbstractTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.sshtools.client.ClientAuthenticator;
 import com.sshtools.client.PasswordAuthenticator;
 import com.sshtools.client.PrivateKeyFileAuthenticator;
@@ -21,33 +48,6 @@ import com.sshtools.common.util.ByteArrayWriter;
 import com.sshtools.synergy.jdk16.UnixDomainSockets;
 import com.sshtools.synergy.ssh.ForwardingChannel;
 import com.sshtools.synergy.ssh.SocketForwardingChannel;
-import org.freedesktop.dbus.connections.BusAddress;
-import org.freedesktop.dbus.connections.SASL;
-import org.freedesktop.dbus.connections.config.TransportConfig;
-import org.freedesktop.dbus.connections.config.TransportConfigBuilder;
-import org.freedesktop.dbus.connections.transports.AbstractTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.net.SocketOption;
-import java.net.UnixDomainSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public class SshTransport extends AbstractTransport {
 
@@ -83,16 +83,6 @@ public class SshTransport extends AbstractTransport {
 				sem.release();
 			}
 		}
-//
-//		@Override
-//		protected boolean checkWindowSpace() {
-//			if (Log.isTraceEnabled()) {
-//				Log.trace("Checking window space on channel=" + getLocalId() + " window=" + localWindow.getWindowSpace()
-//						+ (Objects.nonNull(cache) ? " cached=" + cache.remaining() : ""));
-//			}
-//			return localWindow.getWindowSpace().longValue() + (Objects.nonNull(cache) ? cache.remaining() : 0) <= localWindow
-//					.getMinimumWindowSpace().longValue();
-//		}
 
 		protected SocketChannel createSocketChannel(SocketAddress localAddr, SocketAddress remoteAddr) {
 			return new SocketChannel(null) {
