@@ -1,5 +1,34 @@
 package com.logonbox.dbus.transport.ssh;
 
+import com.sshtools.client.ClientAuthenticator;
+import com.sshtools.client.PasswordAuthenticator;
+import com.sshtools.client.PrivateKeyFileAuthenticator;
+import com.sshtools.client.SshClient;
+import com.sshtools.client.SshClient.SshClientBuilder;
+import com.sshtools.client.SshClientContext;
+import com.sshtools.client.jdk16.UnixDomainSocketClientChannelFactory;
+import com.sshtools.client.jdk16.UnixDomainSocketClientForwardingFactory;
+import com.sshtools.client.jdk16.UnixDomainSocketRemoteForwardRequestHandler;
+import com.sshtools.common.forwarding.ForwardingPolicy;
+import com.sshtools.common.logger.Log;
+import com.sshtools.common.logger.Log.Level;
+import com.sshtools.common.logger.RootLoggerContext;
+import com.sshtools.common.nio.WriteOperationRequest;
+import com.sshtools.common.ssh.ChannelOpenException;
+import com.sshtools.common.ssh.SshConnection;
+import com.sshtools.common.ssh.SshException;
+import com.sshtools.common.util.ByteArrayWriter;
+import com.sshtools.synergy.jdk16.UnixDomainSockets;
+import com.sshtools.synergy.ssh.ForwardingChannel;
+import com.sshtools.synergy.ssh.SocketForwardingChannel;
+import org.freedesktop.dbus.connections.BusAddress;
+import org.freedesktop.dbus.connections.SASL;
+import org.freedesktop.dbus.connections.config.TransportConfig;
+import org.freedesktop.dbus.connections.config.TransportConfigBuilder;
+import org.freedesktop.dbus.connections.transports.AbstractTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -19,35 +48,6 @@ import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-
-import org.freedesktop.dbus.connections.BusAddress;
-import org.freedesktop.dbus.connections.SASL;
-import org.freedesktop.dbus.connections.config.TransportConfig;
-import org.freedesktop.dbus.connections.config.TransportConfigBuilder;
-import org.freedesktop.dbus.connections.transports.AbstractTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.sshtools.client.ClientAuthenticator;
-import com.sshtools.client.PasswordAuthenticator;
-import com.sshtools.client.PrivateKeyFileAuthenticator;
-import com.sshtools.client.SshClient;
-import com.sshtools.client.SshClientContext;
-import com.sshtools.client.jdk16.UnixDomainSocketClientChannelFactory;
-import com.sshtools.client.jdk16.UnixDomainSocketClientForwardingFactory;
-import com.sshtools.client.jdk16.UnixDomainSocketRemoteForwardRequestHandler;
-import com.sshtools.common.forwarding.ForwardingPolicy;
-import com.sshtools.common.logger.Log;
-import com.sshtools.common.logger.Log.Level;
-import com.sshtools.common.logger.RootLoggerContext;
-import com.sshtools.common.nio.WriteOperationRequest;
-import com.sshtools.common.ssh.ChannelOpenException;
-import com.sshtools.common.ssh.SshConnection;
-import com.sshtools.common.ssh.SshException;
-import com.sshtools.common.util.ByteArrayWriter;
-import com.sshtools.synergy.jdk16.UnixDomainSockets;
-import com.sshtools.synergy.ssh.ForwardingChannel;
-import com.sshtools.synergy.ssh.LocalForwardingChannel;
 
 public class SshTransport extends AbstractTransport {
 
@@ -83,16 +83,16 @@ public class SshTransport extends AbstractTransport {
 				sem.release();
 			}
 		}
-
-		@Override
-		protected boolean checkWindowSpace() {
-			if (Log.isTraceEnabled()) {
-				Log.trace("Checking window space on channel=" + getLocalId() + " window=" + localWindow.getWindowSpace()
-						+ (Objects.nonNull(cache) ? " cached=" + cache.remaining() : ""));
-			}
-			return localWindow.getWindowSpace() + (Objects.nonNull(cache) ? cache.remaining() : 0) <= localWindow
-					.getMinimumWindowSpace();
-		}
+//
+//		@Override
+//		protected boolean checkWindowSpace() {
+//			if (Log.isTraceEnabled()) {
+//				Log.trace("Checking window space on channel=" + getLocalId() + " window=" + localWindow.getWindowSpace()
+//						+ (Objects.nonNull(cache) ? " cached=" + cache.remaining() : ""));
+//			}
+//			return localWindow.getWindowSpace().longValue() + (Objects.nonNull(cache) ? cache.remaining() : 0) <= localWindow
+//					.getMinimumWindowSpace().longValue();
+//		}
 
 		protected SocketChannel createSocketChannel(SocketAddress localAddr, SocketAddress remoteAddr) {
 			return new SocketChannel(null) {
@@ -251,18 +251,20 @@ public class SshTransport extends AbstractTransport {
 	static class DbusTCPLocalForwardingChannel extends DbusLocalForwardingChannel {
 
 		public DbusTCPLocalForwardingChannel(SshConnection con, String host, int port, int timeout) {
-			super(LocalForwardingChannel.LOCAL_FORWARDING_CHANNEL_TYPE, con, timeout);
+			super(SocketForwardingChannel.LOCAL_FORWARDING_CHANNEL_TYPE, con, timeout);
 			hostToConnect = host;
 			portToConnect = port;
 		}
 
-		public SocketChannel getSocketChannel() {
+		@Override
+        public SocketChannel getSocketChannel() {
 			var localAddr = InetSocketAddress.createUnresolved("localhost", 0);
 			var remoteAddr = InetSocketAddress.createUnresolved(hostToConnect, portToConnect);
 			return createSocketChannel(localAddr, remoteAddr);
 		}
 
-		protected byte[] createChannel() throws IOException {
+		@Override
+        protected byte[] createChannel() throws IOException {
 			try(var baw = new ByteArrayWriter()) {
 				baw.writeString(hostToConnect);
 				baw.writeInt(portToConnect);
@@ -282,7 +284,8 @@ public class SshTransport extends AbstractTransport {
 			this.path = path;
 		}
 
-		public SocketChannel getSocketChannel() {
+		@Override
+        public SocketChannel getSocketChannel() {
 			var localAddr = UnixDomainSocketAddress.of("/dbus.socket");
 			var remoteAddr = UnixDomainSocketAddress.of(path);
 			return createSocketChannel(localAddr, remoteAddr);
@@ -300,10 +303,10 @@ public class SshTransport extends AbstractTransport {
 	}
 
 	final static Logger LOG = LoggerFactory.getLogger(SshTransport.class);
-	
+
 	static final String AUTHENTICATOR = "authenticator";
 	static final String CONTEXT = "context";
-	
+
 	static {
 		Log.setDefaultContext(new RootLoggerContext() {
 
@@ -433,16 +436,16 @@ public class SshTransport extends AbstractTransport {
 			}
 		});
 	}
-	
+
 	private ServerSocketChannel serverSocket;
 	private SocketChannel socket;
 	private SshClient ssh;
 	private final TransportConfig config;
 
 	SshTransport(BusAddress _address, TransportConfig _config) {
-		super(_address);
+		super(_address, _config);
 		config = _config;
-		setSaslAuthMode(SASL.AUTH_EXTERNAL);
+		getSaslConfig().setAuthMode(SASL.AUTH_EXTERNAL);
 	}
 
 	@Override
@@ -462,7 +465,7 @@ public class SshTransport extends AbstractTransport {
 
 	/**
 	 * Connect to DBus using SSH.
-	 * 
+	 *
 	 * @returns socket channel connected to the remote service (either a TCP socket or a Unix Domain Socket)
 	 * @throws IOException on error
 	 */
@@ -483,17 +486,17 @@ public class SshTransport extends AbstractTransport {
 				var port = 0;
 				String host = null;
 				if (path == null) {
-					host = getAddress().getParameters().getOrDefault("host", "localhost");
-					port = Integer.parseInt(getAddress().getParameters().getOrDefault("port", "-1"));
+					host = getAddress().getParameterValue("host", "localhost");
+					port = Integer.parseInt(getAddress().getParameterValue("port", "-1"));
 					if(port == -1)
 						throw new IOException("You must supply a port parameter, which is the port number on which the DBus Broker is listening on the remote side.");
 				}
 
-				var username = getAddress().getParameters().getOrDefault("username", System.getProperty("user.name"));
-				var via = getAddress().getParameters().getOrDefault("via", host);
+				var username = getAddress().getParameterValue("username", System.getProperty("user.name"));
+				var via = getAddress().getParameterValue("via", host);
 				if(via == null || via.length() == 0)
 					throw new IOException("You must supply a 'via' parameter, which is the address of the SSH server to which this transport should connect.");
-				var viaPort = Integer.parseInt(getAddress().getParameters().getOrDefault("viaPort", "22"));
+				var viaPort = Integer.parseInt(getAddress().getParameterValue("viaPort", "22"));
 				var password = getAddress().getParameterValue("password");
 				if (password != null) {
 					LOG.warn(
@@ -519,15 +522,16 @@ public class SshTransport extends AbstractTransport {
 				}
 				auth = new ArrayList<>(auth);
 
-				ssh = new SshClient(via, viaPort, username, ctx);
-				ssh.getForwardingPolicy().allowForwarding();
-				while (!ssh.isAuthenticated() && !auth.isEmpty()) {
-					ssh.authenticate(auth.remove(0), config.getTimeout());
-				}
-				if (!ssh.isAuthenticated())
-					throw new IOException("Authentication failed.");
-
-				ssh.getForwardingPolicy().add(ForwardingPolicy.UNIX_DOMAIN_SOCKET_FORWARDING);
+				ssh = SshClientBuilder.create().
+				    withTarget(via, viaPort).
+				    withUsername(username).
+				    withSshContext(ctx).
+				    withAuthenticators(auth).
+				    onConfigure((cctx) -> {
+				       cctx.getForwardingPolicy().allowForwarding();
+		               cctx.getForwardingPolicy().add(ForwardingPolicy.UNIX_DOMAIN_SOCKET_FORWARDING);
+				    }).
+				    build();
 
 				DbusLocalForwardingChannel channel;
 				if(path == null)
@@ -551,7 +555,7 @@ public class SshTransport extends AbstractTransport {
 	/**
 	 * Get the function that is called before authentication. You can modify the list of authenticators,
 	 * or provide an entirely new list.
-	 * 
+	 *
 	 * @return  authenticator configurator.
 	 */
 	@SuppressWarnings("unchecked")
@@ -562,7 +566,7 @@ public class SshTransport extends AbstractTransport {
 	/**
 	 * Set a function that is called before authentication. You can modify the list of authenticators,
 	 * or provide an entirely new list.
-	 * 
+	 *
 	 * @param authenticationConfigurator authenticator configurator.
 	 */
 	public static void setAuthenticationConfigurator(
@@ -573,7 +577,7 @@ public class SshTransport extends AbstractTransport {
 	/**
 	 * Set the function that is called before connection. You can modify the configuration,
 	 * or provide an entirely new object.
-	 * 
+	 *
 	 * @param contextConfigurator context configurator.
 	 */
 	public static void setContextConfigurator(
@@ -584,7 +588,7 @@ public class SshTransport extends AbstractTransport {
 	/**
 	 * Get the function that is called before connection. You can modify the configuration,
 	 * or provide an entirely new object.
-	 * 
+	 *
 	 * @param contextConfigurator context configurator.
 	 */
 	@SuppressWarnings("unchecked")
@@ -598,8 +602,8 @@ public class SshTransport extends AbstractTransport {
 	}
 
 	@Override
-	protected boolean isAbstractAllowed() {
-		return false;
+	protected SocketChannel listenImpl() throws IOException {
+		throw new UnsupportedOperationException("The SSH transport is for clients only.");
 	}
 
 }
