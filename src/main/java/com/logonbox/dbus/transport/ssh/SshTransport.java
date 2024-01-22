@@ -2,6 +2,7 @@ package com.logonbox.dbus.transport.ssh;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -439,11 +440,8 @@ public class SshTransport extends AbstractTransport {
 	}
 
 	@Override
-	public void close() throws IOException {
+	protected void closeTransport() throws IOException {
 		getLogger().debug("Disconnecting Transport");
-
-		super.close();
-
 		if (socket != null && socket.isOpen()) {
 			socket.close();
 		}
@@ -451,6 +449,7 @@ public class SshTransport extends AbstractTransport {
 		if (serverSocket != null && serverSocket.isOpen()) {
 			serverSocket.close();
 		}
+		
 	}
 
 	/**
@@ -538,7 +537,10 @@ public class SshTransport extends AbstractTransport {
 			if (ssh != null) {
 				ssh.disconnect();
 			}
-			throw ioe;
+			/* TODO: This is wrong really... but dbus-java catches IOExceptions
+			 * and retries. We do not want this
+			 */
+			throw new UncheckedIOException(ioe);
 		}
 	}
 
@@ -592,8 +594,19 @@ public class SshTransport extends AbstractTransport {
 	}
 
 	@Override
-	protected SocketChannel listenImpl() throws IOException {
+	protected SocketChannel acceptImpl() throws IOException {
 		throw new UnsupportedOperationException("The SSH transport is for clients only.");
+	}
+
+	@Override
+	protected void bindImpl() throws IOException {
+		throw new UnsupportedOperationException("The SSH transport is for clients only.");
+	}
+
+	@Override
+	protected boolean isBound() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

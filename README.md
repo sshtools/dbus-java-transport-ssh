@@ -4,7 +4,7 @@ An extension to [DBus Java](https://github.com/hypfvieh/dbus-java) that allows c
 
 A DBus Java transport works with `SocketChannel`, so we must be able to access a `SocketChannel` from Maverick Synergy that is on the other end of the SSH session connected to a unix domain socket (or TCP socket) served by a DBus broker. This is achieved by extending Synergy's built in unix domain socket support to provide us with such a channel.
 
-At time of writing, this requires at least `dbus-java-4.1.1-SNAPSHOT` and `maverick-synergy-client-3.1.0-SNAPSHOT`. *Neither of these libraries are available yet, this source is being published for development and review. Watch this space*.
+At time of writing, this requires at least `dbus-java-5.0.0-SNAPSHOT` and `maverick-synergy-client-3.1.0-SNAPSHOT`. *Neither of these libraries are available yet, this source is being published for development and review. Watch this space*.
 
 
 #### Usage
