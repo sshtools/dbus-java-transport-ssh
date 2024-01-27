@@ -19,7 +19,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.sshtools</groupId>
 	<artifactId>dbus-java-transport-ssh</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.9.0-SNAPSHOT</version>
 	<name>D-Bus over SSH for Java</name>
 	<properties>
 		<maven.compiler.target>17</maven.compiler.target>
@@ -28,8 +28,9 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<junit.jupiter.version>5.9.2</junit.jupiter.version>
 		<junit.platform.version>1.9.2</junit.platform.version>
-	    <jacoco.agent.jar>${settings.localRepository}/org/jacoco/org.jacoco.agent/${jacoco.version}/org.jacoco.agent-${jacoco.version}-runtime.jar</jacoco.agent.jar>
 	    <surefireArgLine></surefireArgLine>
+		<build.projectProperties>${basedir}/jadaptive.build.properties</build.projectProperties>
+		<build.userProperties>${user.home}/.jadaptive.build.properties</build.userProperties>
 	</properties>
 	<developers>
 		<developer>
@@ -84,7 +85,7 @@
 		<dependency>
             <groupId>com.github.hypfvieh</groupId>
             <artifactId>dbus-java-core</artifactId>
-            <version>5.0.0-SNAPSHOT</version>
+            <version>5.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.sshtools</groupId>
@@ -101,6 +102,25 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>properties-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>initialize</phase>
+						<goals>
+							<goal>read-project-properties</goal>
+						</goals>
+						<configuration>
+							<quiet>false</quiet>
+							<files>
+								<file>${build.projectProperties}</file>
+								<file>${build.userProperties}</file>
+							</files>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
    				 <version>3.0.0-M8</version>
@@ -109,19 +129,24 @@
 		<pluginManagement>
 			<plugins>
 				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>properties-maven-plugin</artifactId>
+    				<version>1.2.1</version>
+				</plugin>
+				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-jar-plugin</artifactId>
-					<version>3.2.0</version>
+					<version>3.3.0</version>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.8.1</version>
+					<version>3.12.1</version>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-source-plugin</artifactId>
-					<version>3.1.0</version>
+					<version>3.3.0</version>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -141,7 +166,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-javadoc-plugin</artifactId>
-					<version>3.2.0</version>
+    				<version>3.6.3</version>
 					<executions>
 						<execution>
 							<id>javadoc-jar</id>
@@ -152,6 +177,7 @@
 						</execution>
 					</executions>
 					<configuration>
+       					<javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
 						<encoding>UTF-8</encoding>
 						<detectJavaApiLink>false</detectJavaApiLink>
 						<source>17</source>
@@ -166,7 +192,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-gpg-plugin</artifactId>
-					<version>3.0.1</version>
+					<version>3.1.0</version>
 					<executions>
 						<execution>
 							<id>sign-artifacts</id>
