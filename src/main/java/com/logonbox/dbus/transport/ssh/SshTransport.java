@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.freedesktop.dbus.connections.BusAddress;
 import org.freedesktop.dbus.connections.SASL;
@@ -297,6 +298,7 @@ public class SshTransport extends AbstractTransport {
 
 	static final String AUTHENTICATOR = "authenticator";
 	static final String CONTEXT = "context";
+	static final String CLIENT = "client";
 
 	static {
 		Log.setDefaultContext(new RootLoggerContext() {
@@ -462,69 +464,19 @@ public class SshTransport extends AbstractTransport {
 	public SocketChannel connectImpl() throws IOException {
 		try {
 			try {
-				var ctx = new SshClientContext();
-				ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
-				ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
-				ctx.getForwardingManager()
-						.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
-				var contextConfigurator = getContextConfigurator(config);
-				if (contextConfigurator != null)
-					ctx = contextConfigurator.apply(ctx);
-
 				var path = getAddress().getParameterValue("path");
-				var port = 0;
-				String host = null;
-				if (path == null) {
-					host = getAddress().getParameterValue("host", "localhost");
-					port = Integer.parseInt(getAddress().getParameterValue("port", "-1"));
-					if(port == -1)
-						throw new IOException("You must supply a port parameter, which is the port number on which the DBus Broker is listening on the remote side.");
+				
+				var client = getClient(getTransportConfig());
+				if(client == null)  {
+					createNewClient(path);
 				}
-
-				var username = getAddress().getParameterValue("username", System.getProperty("user.name"));
-				var via = getAddress().getParameterValue("via", host);
-				if(via == null || via.length() == 0)
-					throw new IOException("You must supply a 'via' parameter, which is the address of the SSH server to which this transport should connect.");
-				var viaPort = Integer.parseInt(getAddress().getParameterValue("viaPort", "22"));
-				var password = getAddress().getParameterValue("password");
-				if (password != null) {
-					LOG.warn(
-							"It is not recommended SSH passwords be part of an address string. Instead, use a private key, an agent, or provide a custom authenticator.");
+				else {
+					ssh = client.get();
 				}
-				var key = getAddress().getParameterValue("key");
-				var passphrase = getAddress().getParameterValue("passphrase");
-				if (passphrase != null) {
-					LOG.warn(
-							"It is not recommended SSH passphrase be part of an address string. Instead, use an agent or provide a custom authenticator.");
-				}
-
-				List<ClientAuthenticator> auth = new ArrayList<>();
-				if (password != null) {
-					auth.add(new PasswordAuthenticator(password));
-				}
-				if (key != null) {
-					auth.add(new PrivateKeyFileAuthenticator(new File(key), passphrase));
-				}
-				var authenticationConfigurator = getAuthenticationConfigurator(config);
-				if (authenticationConfigurator != null) {
-					auth = authenticationConfigurator.apply(auth);
-				}
-				auth = new ArrayList<>(auth);
-
-				ssh = SshClientBuilder.create().
-				    withTarget(via, viaPort).
-				    withUsername(username).
-				    withSshContext(ctx).
-				    withAuthenticators(auth).
-				    onConfigure((cctx) -> {
-				       cctx.getForwardingPolicy().allowForwarding();
-		               cctx.getForwardingPolicy().add(ForwardingPolicy.UNIX_DOMAIN_SOCKET_FORWARDING);
-				    }).
-				    build();
 
 				DbusLocalForwardingChannel channel;
 				if(path == null)
-					channel = new DbusTCPLocalForwardingChannel(ssh.getConnection(), host, port, config.getTimeout());
+					channel = new DbusTCPLocalForwardingChannel(ssh.getConnection(), ssh.getHost(), ssh.getPort(), config.getTimeout());
 				else
 					channel = new DbusUnixDomainSocketLocalForwardingChannel(ssh.getConnection(), path, config.getTimeout());
 				ssh.getConnection().openChannel(channel);
@@ -542,6 +494,89 @@ public class SshTransport extends AbstractTransport {
 			 */
 			throw new UncheckedIOException(ioe);
 		}
+	}
+
+	private void createNewClient(String path) throws IOException, SshException {
+		var ctx = new SshClientContext();
+		ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
+		ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
+		ctx.getForwardingManager()
+				.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
+		var contextConfigurator = getContextConfigurator(config);
+		if (contextConfigurator != null)
+			ctx = contextConfigurator.apply(ctx);
+
+		var port = 0;
+		String host = null;
+		if (path == null) {
+			host = getAddress().getParameterValue("host", "localhost");
+			port = Integer.parseInt(getAddress().getParameterValue("port", "-1"));
+			if(port == -1)
+				throw new IOException("You must supply a port parameter, which is the port number on which the DBus Broker is listening on the remote side.");
+		}
+
+		var username = getAddress().getParameterValue("username", System.getProperty("user.name"));
+		var via = getAddress().getParameterValue("via", host);
+		if(via == null || via.length() == 0)
+			throw new IOException("You must supply a 'via' parameter, which is the address of the SSH server to which this transport should connect.");
+		var viaPort = Integer.parseInt(getAddress().getParameterValue("viaPort", "22"));
+		var password = getAddress().getParameterValue("password");
+		if (password != null) {
+			LOG.warn(
+					"It is not recommended SSH passwords be part of an address string. Instead, use a private key, an agent, or provide a custom authenticator.");
+		}
+		var key = getAddress().getParameterValue("key");
+		var passphrase = getAddress().getParameterValue("passphrase");
+		if (passphrase != null) {
+			LOG.warn(
+					"It is not recommended SSH passphrase be part of an address string. Instead, use an agent or provide a custom authenticator.");
+		}
+
+		List<ClientAuthenticator> auth = new ArrayList<>();
+		if (password != null) {
+			auth.add(new PasswordAuthenticator(password));
+		}
+		if (key != null) {
+			auth.add(new PrivateKeyFileAuthenticator(new File(key), passphrase));
+		}
+		var authenticationConfigurator = getAuthenticationConfigurator(config);
+		if (authenticationConfigurator != null) {
+			auth = authenticationConfigurator.apply(auth);
+		}
+		auth = new ArrayList<>(auth);
+
+		ssh = SshClientBuilder.create().
+		    withTarget(via, viaPort).
+		    withUsername(username).
+		    withSshContext(ctx).
+		    withAuthenticators(auth).
+		    onConfigure((cctx) -> {
+		       cctx.getForwardingPolicy().allowForwarding();
+		       cctx.getForwardingPolicy().add(ForwardingPolicy.UNIX_DOMAIN_SOCKET_FORWARDING);
+		    }).
+		    build();
+	}
+
+	/**
+	 * Get the callback used to create clients. All other SSH connection related parameters will
+	 * be ignored.
+	 *
+	 * @return  authenticator configurator.
+	 */
+	@SuppressWarnings("unchecked")
+	public static Supplier<SshClient> getClient(TransportConfig config) {
+		return (Supplier<SshClient>) config.getAdditionalConfig().get(CLIENT);
+	}
+
+	/**
+	 * Set the a callback to create clients. All other SSH connection related parameters will
+	 * be ignored.
+	 *
+	 * @param clientSupplier client supplier.
+	 */
+	public static void setAuthenticationConfigurator(
+			Supplier<SshClient> clientSupplier, TransportConfigBuilder<?, ?> configBuilder) {
+		configBuilder.withAdditionalConfig(CLIENT, clientSupplier);
 	}
 
 	/**
