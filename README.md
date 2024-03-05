@@ -17,6 +17,19 @@ Simply add the `dbus-java-transport-ssh` module to your POM (or other build desc
 </dependency>
 ```
 
+**For SNAPSHOT version, you will need to add the OSS SNapshots Repository**
+
+```xml
+<repository>
+    <id>oss-snapshots</id>
+    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    <snapshots/>
+    <releases>
+        <enabled>false</enabled>
+    </releases>
+</repository>
+```
+
 Now choose the appropriate Bus path. 
 
 ```java
