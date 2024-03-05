@@ -19,7 +19,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.sshtools</groupId>
 	<artifactId>dbus-java-transport-ssh</artifactId>
-	<version>0.9.0-SNAPSHOT</version>
+	<version>0.9.9-SNAPSHOT</version>
 	<name>D-Bus over SSH for Java</name>
 	<properties>
 		<maven.compiler.target>17</maven.compiler.target>
@@ -90,12 +90,12 @@
         <dependency>
             <groupId>com.sshtools</groupId>
             <artifactId>maverick-synergy-client</artifactId>
-            <version>3.1.0-SNAPSHOT</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>com.sshtools</groupId>
             <artifactId>maverick-synergy-jdk16-client</artifactId>
-            <version>3.1.0-SNAPSHOT</version>
+            <version>3.1.0</version>
         </dependency>
 
 	</dependencies>
