@@ -574,7 +574,7 @@ public class SshTransport extends AbstractTransport {
 	 *
 	 * @param clientSupplier client supplier.
 	 */
-	public static void setAuthenticationConfigurator(
+	public static void setClient(
 			Supplier<SshClient> clientSupplier, TransportConfigBuilder<?, ?> configBuilder) {
 		configBuilder.withAdditionalConfig(CLIENT, clientSupplier);
 	}
