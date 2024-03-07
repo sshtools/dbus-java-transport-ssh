@@ -85,7 +85,7 @@
 		<dependency>
             <groupId>com.github.hypfvieh</groupId>
             <artifactId>dbus-java-core</artifactId>
-            <version>5.0.0</version>
+            <version>5.0.1-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.sshtools</groupId>
@@ -111,7 +111,7 @@
 							<goal>read-project-properties</goal>
 						</goals>
 						<configuration>
-							<quiet>false</quiet>
+							<quiet>true</quiet>
 							<files>
 								<file>${build.projectProperties}</file>
 								<file>${build.userProperties}</file>

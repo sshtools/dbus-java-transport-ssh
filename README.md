@@ -57,9 +57,11 @@ The supported parameters are :-
 
 ##### SSH Configuration
 
-You may have further SSH configuration requirements, such as setting preferred ciphers, keys, compression, host key authentication and more.
+You may have further SSH configuration requirements, such as setting preferred ciphers, keys, 
+compression, host key authentication and more.
 
-This is achieved by access the `SshClientContext` Synergy provides. 
+This is achieved by accessing the `SshClientContext` Synergy provides. You must pass in
+the `TransportConfig` from the `DBusConnectionBuilder`.
 
 ```java
 SshTransport.setContextConfigurator((ctx) -> {
@@ -74,12 +76,34 @@ See the Maverick Synergy [documentation](https://jadaptive.com/app/manpage/agent
 
 ##### SSH Authentication
 
-Rather than provide sensitive information such as passwords or passphrases in the address string, you can again directly access the transport and configure a custom authenticator.
+Rather than provide sensitive information such as passwords or passphrases in the address string, 
+you can again directly access the transport and configure a custom authenticator. You must pass in
+the `TransportConfig` from the `DBusConnectionBuilder`.
 
 ```java
 SshTransport.setAuthenticationConfigurator(
 		(auths) -> Arrays.asList(new PasswordAuthenticator(() -> "changeme")),
 		builder.transportConfig());
+```
+
+##### Providing Your Own Client
+
+You can be in entirely in control of the creation of the client by using `SshTransport.setClient()`. 
+You must pass in the `TransportConfig` from the `DBusConnectionBuilder`.
+
+```java
+SshTransport.setClient(() -> {
+    return SshClientBuilder.create().
+        withTarget("yourhost", 22).
+        withUsername("joeb").
+        withSshContext(SshTransport.createClientContext()).
+        withAuthenticators(new PasswordAuthenticator("asecret")).
+        onConfigure((cctx) -> {
+           cctx.getForwardingPolicy().allowForwarding();
+           cctx.getForwardingPolicy().add(ForwardingPolicy.UNIX_DOMAIN_SOCKET_FORWARDING);
+        }).
+        build();
+}, builder.transportConfig());
 ```
 
 See the Maverick Synergy [documentation](https://jadaptive.com/app/manpage/agent/category/1564757) for more information on authentication.
@@ -92,7 +116,7 @@ The SSH transport uses the `EXTERNAL` mechanism. Part of the SASL handshake incl
 In the case of an SSH connection, the UID of the local user may be totally different to the UID of the remote user. To overcome this, you must know up-front the UID of the remote user, and provide it when configuring the local DBus connection.
 
 ```java
-builder.transportConfig().withSaslUid(1000);		
+builder.transportConfig().configureSasl().withSaslUid(1000);		
 ```
 
  

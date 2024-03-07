@@ -497,11 +497,7 @@ public class SshTransport extends AbstractTransport {
 	}
 
 	private void createNewClient(String path) throws IOException, SshException {
-		var ctx = new SshClientContext();
-		ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
-		ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
-		ctx.getForwardingManager()
-				.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
+		var ctx = createClientContext();
 		var contextConfigurator = getContextConfigurator(config);
 		if (contextConfigurator != null)
 			ctx = contextConfigurator.apply(ctx);
@@ -555,6 +551,24 @@ public class SshTransport extends AbstractTransport {
 		       cctx.getForwardingPolicy().add(ForwardingPolicy.UNIX_DOMAIN_SOCKET_FORWARDING);
 		    }).
 		    build();
+	}
+
+	/**
+	 * Createa a {@link SshClientContext} that is configured to enable UNIX domain sockets.
+	 * 
+	 * @return client context
+	 * 
+	 * @throws IOException on error
+	 * @throws SshException on error
+	 */
+	public static SshClientContext createClientContext() throws IOException, SshException {
+		var ctx = new SshClientContext();
+		ctx.setIdleConnectionTimeoutSeconds(0);
+		ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
+		ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
+		ctx.getForwardingManager()
+				.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
+		return ctx;
 	}
 
 	/**
