@@ -564,10 +564,10 @@ public class SshTransport extends AbstractTransport {
 	public static SshClientContext createClientContext() throws IOException, SshException {
 		var ctx = new SshClientContext();
 		ctx.setIdleConnectionTimeoutSeconds(0);
-		ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
-		ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
-		ctx.getForwardingManager()
-				.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
+//		ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
+//		ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
+//		ctx.getForwardingManager()
+//				.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
 		return ctx;
 	}
 
