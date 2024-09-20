@@ -13,7 +13,7 @@ Simply add the `dbus-java-transport-ssh` module to your POM (or other build desc
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>dbus-java-transport-ssh</artifactId>
-    <version>0.9.9-SNAPSHOT</version>
+    <version>0.9.9</version>
 </dependency>
 ```
 
