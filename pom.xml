@@ -19,7 +19,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.sshtools</groupId>
 	<artifactId>dbus-java-transport-ssh</artifactId>
-	<version>0.9.9</version>
+	<version>0.9.10</version>
 	<name>D-Bus over SSH for Java</name>
 	<properties>
 		<maven.compiler.target>17</maven.compiler.target>
