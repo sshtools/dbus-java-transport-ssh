@@ -55,16 +55,6 @@
 			<distribution>repo</distribution>
 		</license>
 	</licenses>
-	<distributionManagement>
-		<snapshotRepository>
-			<id>ossrh-sshtools</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-		</snapshotRepository>
-		<repository>
-			<id>ossrh-sshtools</id>
-			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-		</repository>
-	</distributionManagement>
 	<scm>
 		<url>https://github.com/sshtools/dbus-java-transport-ssh</url>
 		<connection>scm:git:https://github.com/sshtools/dbus-java-transport-ssh.git</connection>
@@ -90,13 +80,13 @@
         <dependency>
             <groupId>com.sshtools</groupId>
             <artifactId>maverick-synergy-client</artifactId>
-            <version>3.1.3-SNAPSHOT</version>
+            <version>3.1.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.sshtools</groupId>
             <artifactId>maverick-synergy-jdk16-client</artifactId>
-            <version>3.1.3-SNAPSHOT</version>
-        </dependency>
+            <version>3.1.4-SNAPSHOT</version> 
+        </dependency>  
 
 	</dependencies>
 	<build>
@@ -229,17 +219,17 @@
 						</execution>
 					</executions>
 				</plugin>
-				<plugin>
-					<groupId>org.sonatype.plugins</groupId>
-					<artifactId>nexus-staging-maven-plugin</artifactId>
-					<version>1.6.13</version>
-					<extensions>true</extensions>
-					<configuration>
-						<serverId>ossrh-sshtools</serverId>
-						<nexusUrl>https://oss.sonatype.org/</nexusUrl>
-						<autoReleaseAfterClose>true</autoReleaseAfterClose>
-					</configuration>
-				</plugin>
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.8.0</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <autoPublish>true</autoPublish>
+                        <publishingServerId>central-sshtools</publishingServerId>
+                        <waitUntil>published</waitUntil>
+                    </configuration>
+                </plugin>
 			</plugins>
 		</pluginManagement>
 	</build>
@@ -267,23 +257,23 @@
 							</execution>
 						</executions>
 					</plugin>
-					<plugin>
-						<groupId>org.sonatype.plugins</groupId>
-						<artifactId>nexus-staging-maven-plugin</artifactId>
-					</plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                    </plugin>
 				</plugins>
 			</build>
 		</profile>
 	</profiles>
 	
 	<repositories>
-		<repository>
-			<id>oss-snapshots</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-			<snapshots />
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-		</repository>
+        <repository>
+            <id>oss-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots</url>
+            <snapshots />
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </repository>
 	</repositories>
 </project>
