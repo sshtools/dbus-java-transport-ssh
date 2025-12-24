@@ -35,10 +35,8 @@ import com.sshtools.client.PrivateKeyFileAuthenticator;
 import com.sshtools.client.SshClient;
 import com.sshtools.client.SshClient.SshClientBuilder;
 import com.sshtools.client.SshClientContext;
-import com.sshtools.client.jdk16.UnixDomainSocketClientChannelFactory;
-import com.sshtools.client.jdk16.UnixDomainSocketClientForwardingFactory;
-import com.sshtools.client.jdk16.UnixDomainSocketRemoteForwardRequestHandler;
 import com.sshtools.common.forwarding.ForwardingPolicy;
+import com.sshtools.common.forwarding.ForwardingPolicy.ForwardingPolicyBuilder;
 import com.sshtools.common.logger.Log;
 import com.sshtools.common.logger.Log.Level;
 import com.sshtools.common.logger.RootLoggerContext;
@@ -47,9 +45,9 @@ import com.sshtools.common.ssh.ChannelOpenException;
 import com.sshtools.common.ssh.SshConnection;
 import com.sshtools.common.ssh.SshException;
 import com.sshtools.common.util.ByteArrayWriter;
-import com.sshtools.synergy.jdk16.UnixDomainSockets;
 import com.sshtools.synergy.ssh.ForwardingChannel;
 import com.sshtools.synergy.ssh.SocketForwardingChannel;
+import com.sshtools.synergy.ssh.UnixDomainSockets;
 
 public class SshTransport extends AbstractTransport {
 
@@ -242,6 +240,9 @@ public class SshTransport extends AbstractTransport {
 
 	static class DbusTCPLocalForwardingChannel extends DbusLocalForwardingChannel {
 
+		private final String hostToConnect;
+		private final int portToConnect;
+
 		public DbusTCPLocalForwardingChannel(SshConnection con, String host, int port, int timeout) {
 			super(SocketForwardingChannel.LOCAL_FORWARDING_CHANNEL_TYPE, con, timeout);
 			hostToConnect = host;
@@ -299,6 +300,7 @@ public class SshTransport extends AbstractTransport {
 	static final String AUTHENTICATOR = "authenticator";
 	static final String CONTEXT = "context";
 	static final String CLIENT = "client";
+	static final String CONNECTION = "connection";
 
 	static {
 		Log.setDefaultContext(new RootLoggerContext() {
@@ -465,21 +467,36 @@ public class SshTransport extends AbstractTransport {
 		try {
 			try {
 				var path = getAddress().getParameterValue("path");
-				
-				var client = getClient(getTransportConfig());
-				if(client == null)  {
-					createNewClient(path);
-				}
-				else {
-					ssh = client.get();
-				}
+				var conxSupp = getConnection(getTransportConfig());
 
 				DbusLocalForwardingChannel channel;
-				if(path == null)
-					channel = new DbusTCPLocalForwardingChannel(ssh.getConnection(), ssh.getHost(), ssh.getPort(), config.getTimeout());
-				else
-					channel = new DbusUnixDomainSocketLocalForwardingChannel(ssh.getConnection(), path, config.getTimeout());
-				ssh.getConnection().openChannel(channel);
+				
+				if(conxSupp == null) {
+					var client = getClient(getTransportConfig());
+					if(client == null)  {
+						createNewClient(path);
+					}
+					else {
+						ssh = client.get();
+					}
+	
+					if(path == null)
+						channel = new DbusTCPLocalForwardingChannel(ssh.getConnection(), ssh.getHost(), ssh.getPort(), config.getTimeout());
+					else
+						channel = new DbusUnixDomainSocketLocalForwardingChannel(ssh.getConnection(), path, config.getTimeout());
+					
+					ssh.getConnection().openChannel(channel);
+				}
+				else {
+					var conx = conxSupp.get();
+					if(path == null)
+						channel = new DbusTCPLocalForwardingChannel(conx, getAddress().getParameterValue("host", "localhost"), getIntParamOrDefault("port", 55556), config.getTimeout());
+					else
+						channel = new DbusUnixDomainSocketLocalForwardingChannel(conx, path, config.getTimeout());
+					
+					conx.openChannel(channel);
+				}
+				
 				channel.waitForChannelOpenConfirmation();
 				return channel.getSocketChannel();
 			} catch (SshException sshe) {
@@ -493,6 +510,15 @@ public class SshTransport extends AbstractTransport {
 			 * and retries. We do not want this
 			 */
 			throw new UncheckedIOException(ioe);
+		}
+	}
+
+	private int getIntParamOrDefault(String param, int def) {
+		try {
+			return Integer.parseInt(getAddress().getParameterValue("port"));
+		}
+		catch(Exception e) {
+			return def;
 		}
 	}
 
@@ -530,7 +556,7 @@ public class SshTransport extends AbstractTransport {
 
 		List<ClientAuthenticator> auth = new ArrayList<>();
 		if (password != null) {
-			auth.add(new PasswordAuthenticator(password));
+			auth.add(PasswordAuthenticator.forPassword(password));
 		}
 		if (key != null) {
 			auth.add(new PrivateKeyFileAuthenticator(new File(key), passphrase));
@@ -546,10 +572,9 @@ public class SshTransport extends AbstractTransport {
 		    withUsername(username).
 		    withSshContext(ctx).
 		    withAuthenticators(auth).
-		    onConfigure((cctx) -> {
-		       cctx.getForwardingPolicy().allowForwarding();
-		       cctx.getForwardingPolicy().add(ForwardingPolicy.UNIX_DOMAIN_SOCKET_FORWARDING);
-		    }).
+		    withPolicies(ForwardingPolicyBuilder.create().
+		    	allowUnixDomainSocketForwarding().
+		    	build()).
 		    build();
 	}
 
@@ -564,16 +589,27 @@ public class SshTransport extends AbstractTransport {
 	public static SshClientContext createClientContext() throws IOException, SshException {
 		var ctx = new SshClientContext();
 		ctx.setIdleConnectionTimeoutSeconds(0);
-		ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
-		ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
-		ctx.getForwardingManager()
-				.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
+//		ctx.setChannelFactory(new UnixDomainSocketClientChannelFactory());
+//		ctx.getForwardingManager().setForwardingFactory(new UnixDomainSocketClientForwardingFactory());
+//		ctx.getForwardingManager()
+//				.addRemoteForwardRequestHandler(new UnixDomainSocketRemoteForwardRequestHandler());
 		return ctx;
 	}
 
 	/**
+	 * Get the callback used to create connections. All other SSH connection related parameters will
+	 * be ignored. A connection is the lowest level component required to make the tunnel and so overrides {@link #getClient(TransportConfig)}
+	 *
+	 * @return  authenticator configurator.
+	 */
+	@SuppressWarnings("unchecked")
+	public static Supplier<SshConnection> getConnection(TransportConfig config) {
+		return (Supplier<SshConnection>) config.getAdditionalConfig().get(CONNECTION);
+	}
+
+	/**
 	 * Get the callback used to create clients. All other SSH connection related parameters will
-	 * be ignored.
+	 * be ignored except {@link #setConnection(Supplier, TransportConfigBuilder)} which may override this.
 	 *
 	 * @return  authenticator configurator.
 	 */
@@ -585,6 +621,17 @@ public class SshTransport extends AbstractTransport {
 	/**
 	 * Set the a callback to create clients. All other SSH connection related parameters will
 	 * be ignored.
+	 *
+	 * @param connectionSupplier connection supplier.
+	 */
+	public static void setConnection(
+			Supplier<SshConnection> connectionSupplier, TransportConfigBuilder<?, ?> configBuilder) {
+		configBuilder.withAdditionalConfig(CONNECTION, connectionSupplier);
+	}
+
+	/**
+	 * Set the a callback to create clients. All other SSH connection related parameters will
+	 * be ignored except {@link #setConnection(Supplier, TransportConfigBuilder)} which may override this.
 	 *
 	 * @param clientSupplier client supplier.
 	 */
