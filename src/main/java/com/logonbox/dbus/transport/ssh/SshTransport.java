@@ -302,7 +302,7 @@ public class SshTransport extends AbstractTransport {
 	static final String CLIENT = "client";
 	static final String CONNECTION = "connection";
 
-	static {
+	static void maverickLoggingToSlf4j() {
 		Log.setDefaultContext(new RootLoggerContext() {
 
 			private Level level;
