@@ -26,6 +26,7 @@ import org.freedesktop.dbus.connections.SASL;
 import org.freedesktop.dbus.connections.config.TransportConfig;
 import org.freedesktop.dbus.connections.config.TransportConfigBuilder;
 import org.freedesktop.dbus.connections.transports.AbstractTransport;
+import org.freedesktop.dbus.messages.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,7 +175,14 @@ public class SshTransport extends AbstractTransport {
 				public int write(ByteBuffer src) throws IOException {
 					if (!out)
 						throw new IOException("Closed.");
-					int w = src.limit();
+					int w = src.remaining();
+					if(w == 0) {
+						/* NOTE: Work around for bug in synergy 3.1.4/3.2.0-SNAPSHOT as of 05/03/2026
+						 * where a write with an empty buffer causes
+						 * a deadlock.
+						 */
+						return 0;
+					}
 					sendChannelDataAndBlock(src);
 					return w;
 				}
@@ -682,6 +690,12 @@ public class SshTransport extends AbstractTransport {
 	@SuppressWarnings("unchecked")
 	public static Function<SshClientContext, SshClientContext> getContextConfigurator(TransportConfig config) {
 		return (Function<SshClientContext, SshClientContext>) config.getAdditionalConfig().get(CONTEXT);
+	}
+
+	@Override
+	public void writeMessage(Message _msg) throws IOException {
+		LOG.info("Writing DBus over SSH message: {}", _msg);
+		super.writeMessage(_msg);
 	}
 
 	@Override
