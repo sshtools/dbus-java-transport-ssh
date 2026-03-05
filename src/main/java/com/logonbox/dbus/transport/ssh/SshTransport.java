@@ -26,7 +26,6 @@ import org.freedesktop.dbus.connections.SASL;
 import org.freedesktop.dbus.connections.config.TransportConfig;
 import org.freedesktop.dbus.connections.config.TransportConfigBuilder;
 import org.freedesktop.dbus.connections.transports.AbstractTransport;
-import org.freedesktop.dbus.messages.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -690,12 +689,6 @@ public class SshTransport extends AbstractTransport {
 	@SuppressWarnings("unchecked")
 	public static Function<SshClientContext, SshClientContext> getContextConfigurator(TransportConfig config) {
 		return (Function<SshClientContext, SshClientContext>) config.getAdditionalConfig().get(CONTEXT);
-	}
-
-	@Override
-	public void writeMessage(Message _msg) throws IOException {
-		LOG.info("Writing DBus over SSH message: {}", _msg);
-		super.writeMessage(_msg);
 	}
 
 	@Override
